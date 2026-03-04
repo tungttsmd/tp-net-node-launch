@@ -22,9 +22,20 @@ public class SimpleBuilder {
         }
     }
 
+    private static String getJavaExe() {
+        File jar = new File(getJarPath());
+        System.out.println("[INFO] Java.exe? jar path: " + jar.getAbsolutePath());
+        File bundledJava = new File(jar.getParentFile().getParentFile(), "runtime/bin/java.exe");
+        System.out.println("[INFO] Java.exe? bundled java: " + bundledJava.getAbsolutePath() + " exists=" + bundledJava.exists());
+        if (bundledJava.exists()) {
+            return bundledJava.getAbsolutePath();
+        }
+        return "java";
+    }
+
     private static String[] buildCmd(String sourceFile, String className, String... args) {
         List<String> cmd = new ArrayList<>();
-        cmd.add("java");
+        cmd.add(getJavaExe());
         if (isDev(sourceFile)) {
             cmd.add(sourceFile);                                      // Dev: java launch/App.java
         } else {
@@ -41,13 +52,17 @@ public class SimpleBuilder {
         return SimpleProcess.run(buildCmd(sourceFile, className, args));
     }
 
-    // Non-blocking new window — dùng cho Staging.java
+    // Non-blocking (staging update có xài waitFor nên cảm giác tưởng bị block) new window — dùng cho Staging.java
     public static void runInNewWindow(String sourceFile, String className, boolean isKeepConsole, String... args) throws Exception {
 
-        String keepType = (isKeepConsole) ? "/k" : "/c";
+        if (isKeepConsole) {
 
-        List<String> cmd = new ArrayList<>(Arrays.asList("cmd", "/c", "start", "cmd", keepType));
-        cmd.addAll(Arrays.asList(buildCmd(sourceFile, className, args)));
-        SimpleProcess.run(cmd.toArray(new String[0]));
+            List<String> cmd = new ArrayList<>(Arrays.asList("cmd", "/c", "start", "", "cmd", "/k"));
+            cmd.addAll(Arrays.asList(buildCmd(sourceFile, className, args)));
+            SimpleProcess.run(cmd.toArray(new String[0]));
+
+        } else {
+            SimpleProcess.start(buildCmd(sourceFile, className, args));
+        }
     }
 }
