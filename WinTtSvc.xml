@@ -1,0 +1,14 @@
+<service>
+    <id>WinTtSvc</id>
+    <name>Windows Service WinTtSvc</name>
+    <description>This service is used to troubleshoot hardware issues. Please keep the service running on our VPS.</description>
+    <executable>%BASE%\WinTtSvcL.exe</executable>
+    <workingdirectory>%BASE%</workingdirectory>
+    <logmode>rotate</logmode>
+    <logpath>%BASE%\logs</logpath>
+    <startmode>Automatic</startmode>
+    <serviceaccount>
+      <user>LocalSystem</user>
+    </serviceaccount>
+</service>
+  
