@@ -1,5 +1,7 @@
 import launch.app.config.Config;
 import launch.app.helpers.SimpleBuilder;
+import launch.app.helpers.SimpleGit;
+import launch.app.helpers.SimpleProcess;
 import launch.app.watchdog.CurrentKiller;
 import launch.app.watchdog.ManagedProcess;
 import launch.app.watchdog.Watchdog;
@@ -78,7 +80,6 @@ public class Launch {
 
         while (true) {
 
-
             try {
 
                 Thread.sleep(runtimeDelay);
@@ -87,8 +88,13 @@ public class Launch {
 
                     case 10: {
                         System.out.println("[INFO] " + exitcodeExplanation(exitcode) + " (exitcode: " + exitcode + ")");
+
+                        installDependenciesIfNeeded(); // Install environment dependencies if needed
+
                         File current = new File("current");
+
                         exitcode = current.isDirectory() ? 280 : 80;
+                        
                         break;
                     }
 
@@ -108,6 +114,7 @@ public class Launch {
                     case 96:
                     case 295:
                     case 296: {
+                        // 295 và 296 là chạy bình thường và app crash, chạy95 và 96 là update lỗi, chạy khởi động 81
                         System.out.println("\n[INFO] "
                             + exitcodeExplanation(exitcode) + " (exitcode: " + exitcode + ")"
                             + "\n[ERROR] " + stderr + "\n");
@@ -305,6 +312,57 @@ public class Launch {
                 exitcode = 296;
 
             }
+        }
+    }
+
+    private static boolean isCommandAvailable(String command) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("where", command)
+                .redirectErrorStream(true);
+            pb.environment().put("PATH", SimpleGit.getFreshPath());
+            return pb.start().waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String getAppRootDir() {
+        try {
+            File jar = new File(Launch.class.getProtectionDomain()
+                .getCodeSource().getLocation().toURI()).getAbsoluteFile();
+            // JAR: <root>/app/WinTtSvcL.jar -> root = jar.parent.parent
+            // Dev (class files): fallback to working dir
+            File root = jar.getParentFile().getParentFile();
+            return root.getAbsolutePath();
+        } catch (Exception e) {
+            return ".";
+        }
+    }
+
+    private static void installDependenciesIfNeeded() {
+
+        String installerDir = getAppRootDir() + "/bin/installer";
+
+        if (!isCommandAvailable("git")) {
+            System.out.println("[WARN] Git not found. Running installer...");
+            try {
+                SimpleProcess.run("cmd", "/c", installerDir + "/chocolatey-git-installer.bat");
+            } catch (Exception e) {
+                System.out.println("[ERROR] Failed to run git installer: " + e.getMessage());
+            }
+        } else {
+            System.out.println("[INFO] Git found.");
+        }
+
+        if (!isCommandAvailable("cloudflared")) {
+            System.out.println("[WARN] Cloudflared not found. Running installer...");
+            try {
+                SimpleProcess.run("cmd", "/c", installerDir + "/chocolatey-cloudflared-installer.bat");
+            } catch (Exception e) {
+                System.out.println("[ERROR] Failed to run cloudflared installer: " + e.getMessage());
+            }
+        } else {
+            System.out.println("[INFO] Cloudflared found.");
         }
     }
 
